@@ -610,7 +610,12 @@ export class Writer {
         return section;
     }
 
-    replace_code(str) {
+    /**
+     * Convert HTML markup in schema descriptions to RST. The static version
+     * accepts callbacks for instance-specific operations (ref resolution and
+     * permission tracking). Can be called from outside the Writer class.
+     */
+    static convertMarkupToRst(str, { resolveRef = null, trackPermission = null } = {}) {
         if (!str) {
             return str;
         }
@@ -676,23 +681,36 @@ export class Writer {
 
         // Fix deprecated |..| notation for refs.
         str = str.replace(/\|([^|]+)\|/g, "$(ref:$1)");
-        // Temporary: Fix trailing () at end of refs. 
+        // Temporary: Fix trailing () at end of refs.
         str = str.replace(/\$\(ref:(.*?)\(\)\)/g, "$(ref:$1)");
         // Replace refs.
-        str = str.replace(/\$\(ref:(.*?)\)/g, (match, inner) => this.format_link(inner));
+        if (resolveRef) {
+            str = str.replace(/\$\(ref:(.*?)\)/g, (match, inner) => resolveRef(inner));
+        }
         str = str.replace(/\$\((doc:(.*?))\)/g, ":doc:`$2`");
         // Replace deprecated $(topic:...) references with their plain link text.
         str = str.replace(/\$\((topic:[^\)]+)\)\[(.*?)\]/g, "$2");
         // Replace URLs.
         str = str.replace(/<a href="(.*?)">(.*?)<\/a>/g, "`$2 <$1>`__");
         str = str.replace(/<a href='(.*?)'>(.*?)<\/a>/g, "`$2 <$1>`__");
-        // Replace and track permissions.
-        str = str.replace(/<permission>(.*?)<\/permission>/g, (match, permission) => {
-            this.foundPermissions.add(permission);
-            return `:permission:${SBT}${permission}${SBT}`;
-        });
+        // Replace permissions.
+        if (trackPermission) {
+            str = str.replace(/<permission>(.*?)<\/permission>/g, (match, permission) => {
+                trackPermission(permission);
+                return `:permission:${SBT}${permission}${SBT}`;
+            });
+        } else {
+            str = str.replace(/<permission>(.*?)<\/permission>/g, `:permission:${SBT}$1${SBT}`);
+        }
 
         return str;
+    }
+
+    replace_code(str) {
+        return Writer.convertMarkupToRst(str, {
+            resolveRef: inner => this.format_link(inner),
+            trackPermission: permission => this.foundPermissions.add(permission),
+        });
     }
 
     reference(refId) {

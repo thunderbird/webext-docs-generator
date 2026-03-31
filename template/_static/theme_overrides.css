@@ -168,6 +168,35 @@ div.container > ul {
 .setting-prop-header a:hover {
   text-decoration: underline;
 }
+/* Changelog API headers */
+.changelog-api-header {
+  border-top: 3px solid #6ab0de;
+  background: #e7f2fa;
+  margin-bottom: 1ex;
+  margin-top: 1.5em;
+  display: inline-flex;
+  align-items: center;
+}
+.changelog-api-label {
+  font-size: 80%;
+  font-weight: bold;
+  font-style: italic;
+  padding: 5px;
+  display: block;
+  color: #3782bb;
+}
+.changelog-api-header a {
+  padding: 6px 1.5em 6px 6px;
+  margin: 0;
+  font-size: 90%;
+  font-weight: bold;
+  line-height: normal;
+  color: #404040;
+  text-decoration: none;
+}
+.changelog-api-header a:hover {
+  text-decoration: underline;
+}
 
 /* api section class embraces only the section title, */
 /* the rest of the section is inside the sectionbody */

@@ -25,3 +25,10 @@
   guides/vcard
   {{CONDITION:MV=3:guides/manifestV3}}
   guides/experiments
+
+.. toctree::
+  :hidden:
+  :maxdepth: 1
+  :caption: Changelog
+
+  {{CHANGELOG_LIST:115}}
