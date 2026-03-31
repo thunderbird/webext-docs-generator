@@ -55,6 +55,9 @@ export class Writer {
     get IS_SETTING() {
         return this.#options.IS_SETTING;
     }
+    get SETTING_NAMES() {
+        return this.#options.SETTING_NAMES;
+    }
 
     reportFixMeIfTriggered(value, ...info) {
         if (value && this.config.report_errors) {
@@ -758,6 +761,13 @@ export class Writer {
             ref = [this.namespaceName, ...ref.split(".").slice(1)].join(".");
         }
 
+        // Setting sub-namespaces don't have RST section headings, so :ref:
+        // needs explicit display text.
+        if (this.SETTING_NAMES.has(ref)) {
+            const displayName = ref.split(".").pop();
+            return `:ref:${SBT}${displayName} <${tools.escapeUppercase(ref)}>${SBT}`;
+        }
+
         return `:ref:${SBT}${tools.escapeUppercase(ref)}${SBT}`;
     }
 
@@ -1311,6 +1321,9 @@ export class Writer {
                 `   <h2>Property: ${propertyName}</h2>`,
                 "",
             ]);
+            // Add a :ref: label right before the description so
+            // cross-references resolve with the description as display text.
+            doc.append(this.reference(`${this.namespaceName}`));
             doc.append(this.format_description(this.namespaceSchema));
             doc.append([
                 "",
