@@ -400,10 +400,6 @@ export class Writer {
             ...(this.namespaceSchema?.permissions || []),
             ...(obj?.permissions || []),
         ];
-        // Keep track of found permissions.
-        allPermissions
-            .filter(permission => !permission.startsWith("manifest:"))
-            .forEach(permission => this.foundPermissions.add(permission));
 
         const entries = [];
         for (const permission of Array.from(new Set(allPermissions)).sort()) {
@@ -464,7 +460,7 @@ export class Writer {
         })
 
         const enum_lines = [""];
-        if (value.enum.length == 0) {
+        if (value.enum.length === 0) {
             enum_lines.push("No supported values.");
         } else {
             enum_lines.push("Supported values:");
@@ -750,11 +746,11 @@ export class Writer {
             //
             // Check RELATED_NAMESPACE_NAMES!
             let fixedRef = `${this.namespaceName}.${strippedRef}`;
-            const isLocal = (this.namespaceSchema.types || []).find(e => e.id && e.id == strippedRef);
+            const isLocal = (this.namespaceSchema.types || []).find(e => e.id && e.id === strippedRef);
             if (!isLocal && this.RELATED_NAMESPACE_NAMES.length > 1) {
                 let isRelated = false;
                 for (let relatedNamespaceName of this.RELATED_NAMESPACE_NAMES) {
-                    isRelated = (this.SCHEMAS.get(relatedNamespaceName) || []).some(n => n.types && n.types.some(t => t.id == strippedRef))
+                    isRelated = (this.SCHEMAS.get(relatedNamespaceName) || []).some(n => n.types && n.types.some(t => t.id === strippedRef))
                     if (isRelated) {
                         fixedRef = `${relatedNamespaceName}.${strippedRef}`;
                         break;
@@ -954,7 +950,7 @@ export class Writer {
     }
 
     async generateFunctionsSection() {
-        if (!Array.isArray(this.namespaceSchema.functions) || this.namespaceSchema.functions.length == 0) {
+        if (!Array.isArray(this.namespaceSchema.functions) || this.namespaceSchema.functions.length === 0) {
             return null;
         }
 
@@ -1016,7 +1012,7 @@ export class Writer {
         }
 
         // Early exit if no functions have been found.
-        if (section.length == 0) {
+        if (section.length === 0) {
             return null;
         }
 
@@ -1027,7 +1023,7 @@ export class Writer {
     }
 
     async generateEventsSection() {
-        if (!Array.isArray(this.namespaceSchema.events) || this.namespaceSchema.events.length == 0) {
+        if (!Array.isArray(this.namespaceSchema.events) || this.namespaceSchema.events.length === 0) {
             return null;
         }
 
@@ -1091,7 +1087,7 @@ export class Writer {
         }
 
         // Early exit if no events have been found.
-        if (section.length == 0) {
+        if (section.length === 0) {
             return null;
         }
         this.sidebar.set("events", "  * `Events`_");
@@ -1127,8 +1123,8 @@ export class Writer {
             for (const id of [...this.foundTypes]) {
                 const strippedId = strip_namespace_prefix(id);
                 const typeDef = this.TYPES.get(id)
-                    || (this.namespaceSchema.types && this.namespaceSchema.types.find(e => e.id && e.id == strippedId))
-                    || (this.manifestSchema.types && this.manifestSchema.types.find(e => e.id && e.id == strippedId))
+                    || (this.namespaceSchema.types && this.namespaceSchema.types.find(e => e.id && e.id === strippedId))
+                    || (this.manifestSchema.types && this.manifestSchema.types.find(e => e.id && e.id === strippedId))
                     // Some manifest types are sadly not referenced as such,
                     // but appear as local types.
                     || this.reportFixMeIfTriggered(this.TYPES.get(`manifest.${strippedId}`), "Missing manifest prefix in reference", this.namespaceName, strippedId)
@@ -1149,7 +1145,7 @@ export class Writer {
 
                 if (typeDef) {
                     definitions.set(typeDef.id, this.format_type(typeDef));
-                } else if (done && this.namespaceName == bestNamespaceMatch) {
+                } else if (done && this.namespaceName === bestNamespaceMatch) {
                     // We are done, but this is missing, log it.
                     this.reportFixMeIfTriggered(true, "Missing type definition", this.namespaceName, id)
                 };
@@ -1158,7 +1154,7 @@ export class Writer {
             if (done) {
                 break;
             }
-            if (prevFoundSize == this.foundTypes.size) {
+            if (prevFoundSize === this.foundTypes.size) {
                 done = true;
             }
         } while (true)
@@ -1169,7 +1165,7 @@ export class Writer {
             .forEach(([id, definition]) => section.addSection(definition));
 
         // Early exit if no types have been found.
-        if (section.length == 0) {
+        if (section.length === 0) {
             return null;
         }
         this.sidebar.set("types", "  * `Types`_");
@@ -1293,10 +1289,6 @@ export class Writer {
             "",
             "  .. include:: /_includes/developer-resources.rst",
             "",
-            //        "  ≡ Related information",
-            //        "",
-            //        "  * :doc:`/examples/eventListeners`",
-            //        "",
             "=".repeat(title.length),
             title,
             "=".repeat(title.length),

@@ -92,8 +92,8 @@ if (!config.schemas || !config.output || !config.manifest_version) {
             continue;
         }
 
-        let manifestNamespace = schema.data.find(e => e.namespace == "manifest");
-        let otherNamespaces = schema.data.filter(e => e.namespace != "manifest");
+        let manifestNamespace = schema.data.find(e => e.namespace === "manifest");
+        let otherNamespaces = schema.data.filter(e => e.namespace !== "manifest");
 
         // Find APIs which do not have a path and therefore no API namespace. In
         // order to document those, we create a fake API namespace, following the
@@ -215,7 +215,7 @@ if (!config.schemas || !config.output || !config.manifest_version) {
     // First loop over manifest schemas to extract extends and update the global
     // manifest schema.
     for (let [namespaceName, schema] of namespaces) {
-        const manifestSchema = schema.find(e => e.namespace == "manifest");
+        const manifestSchema = schema.find(e => e.namespace === "manifest");
         for (let localDefinition of (manifestSchema.types || [])) {
             let extend = localDefinition["$extend"];
             // We only care about extends here. There *are* manifests which also
@@ -230,11 +230,11 @@ if (!config.schemas || !config.output || !config.manifest_version) {
     }
 
     for (let [namespaceName, schema] of namespaces) {
-        const manifestSchema = schema.find(e => e.namespace == "manifest");
-        const namespaceSchema = schema.find(e => e.namespace == namespaceName);
+        const manifestSchema = schema.find(e => e.namespace === "manifest");
+        const namespaceSchema = schema.find(e => e.namespace === namespaceName);
         const parentNamespaceSchemas = namespaceName.split(".").slice(0, -1)
             .map((_, i, parts) => parts.slice(0, i + 1).join("."))
-            .map(name => namespaces.get(name)?.find(e => e.namespace == name));
+            .map(name => namespaces.get(name)?.find(e => e.namespace === name));
 
         const writer = new Writer({
             config,

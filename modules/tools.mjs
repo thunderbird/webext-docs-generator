@@ -103,10 +103,14 @@ export async function getSchemaFiles(folderPath) {
       jsonFiles.map(async file => {
         const filePath = path.join(folderPath, file);
         const content = await fs.readFile(filePath, "utf-8");
-        return {
-          file,
-          data: JSON.parse(content)
-        };
+        try {
+          return {
+            file,
+            data: JSON.parse(content)
+          };
+        } catch (err) {
+          throw new Error(`Failed to parse ${file}: ${err.message}`);
+        }
       })
     );
     return results;
@@ -286,12 +290,12 @@ const getType = (v) => {
 export function mergeSchema(entries, entry, manifest) {
   const subMerge = (a, b) => { // b into a
     for (let entry of Object.keys(b)) {
-      if (getType(b[entry]) == "primitive") {
+      if (getType(b[entry]) === "primitive") {
         // Add/overwrite it (should not be different).
         a[entry] = b[entry];
         continue;
       }
-      if (Array.isArray(b[entry]) && b[entry].length == 0) {
+      if (Array.isArray(b[entry]) && b[entry].length === 0) {
         continue;
       }
       if (Array.isArray(b[entry]) && b[entry].length > 0) {
@@ -300,12 +304,12 @@ export function mergeSchema(entries, entry, manifest) {
           a[entry] = b[entry];
           continue;
         }
-        if (getType(b[entry][0]) == "primitive") {
+        if (getType(b[entry][0]) === "primitive") {
           // Merge, but ensure uniqueness.
           a[entry] = [...new Set([...a[entry], ...b[entry]])];
           continue;
         }
-        if (getType(b[entry][0]) == "object" && getType(a[entry]) == "array") {
+        if (getType(b[entry][0]) === "object" && getType(a[entry]) === "array") {
           // Merge, but skip existing entries.
           a[entry].push(
             ...b[entry].filter(bItem =>
@@ -315,18 +319,18 @@ export function mergeSchema(entries, entry, manifest) {
           continue;
         }
       }
-      console.log("Hu?", entry, b[entry])
+      // Unhandled entry type in schema merge.
     }
   }
 
-  let existingEntry = entries.find(e => e.namespace == entry.namespace);
+  let existingEntry = entries.find(e => e.namespace === entry.namespace);
   if (existingEntry) {
     subMerge(existingEntry, entry);
   } else {
     entries.push(entry);
   }
 
-  let existingManifest = entries.find(e => e.namespace == "manifest");
+  let existingManifest = entries.find(e => e.namespace === "manifest");
   if (existingManifest) {
     subMerge(existingManifest, manifest);
   } else {
@@ -354,7 +358,7 @@ export function mergeSchemaExtensions(dstObject, srcObject) {
     let bEntries = b.choices.filter(e => e[type]);
     for (let bEntry of bEntries) {
       let aEntries = a.choices.filter(e => e[type]);
-      if (aEntries.length == 0) {
+      if (aEntries.length === 0) {
         a.choices.push(bEntry);
         continue;
       }
@@ -383,7 +387,7 @@ export function mergeSchemaExtensions(dstObject, srcObject) {
     }
 
     for (let key of [...Object.keys(b)]) {
-      if (key == "$extend") {
+      if (key === "$extend") {
         continue;
       }
 
@@ -393,7 +397,7 @@ export function mergeSchemaExtensions(dstObject, srcObject) {
             a[key] = b[key];
             break;
           case "array":
-            if (key == "choices") {
+            if (key === "choices") {
               // choices need special handling
               mergeChoice(a, b, "enum");
               mergeChoice(a, b, "$ref");

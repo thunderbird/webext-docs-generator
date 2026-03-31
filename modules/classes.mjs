@@ -36,16 +36,6 @@ export class AdvancedArray extends Array {
 
     toString() {
         // Remove consecutive empty rows before joining the collected lines.
-        // const clean = this.filter(e => e !== undefined).reduce((result, item) => {
-        //     const isEmpty = item.trim() === "";
-        //     const lastWasEmpty = result.at(-1)?.trim() === "";
-
-        //     if (!isEmpty || (isEmpty && !lastWasEmpty)) {
-        //         result.push(item || "");
-        //     }
-        //     return result;
-        // }, []);
-
         const clean = this
             .filter(e => e !== undefined)
             .flatMap((item, i, arr) => {
