@@ -249,6 +249,7 @@ if (!config.schemas || !config.output || !config.manifest_version) {
             RELATED_NAMESPACE_NAMES: [...relatedNamespaceNames.values()].find(e => e.includes(namespaceName)),
             SETTING_SUB_NAMESPACES: settingSubNamespaces.get(namespaceName) || [],
             IS_SETTING: settingNames.has(namespaceName),
+            SETTING_NAMES: settingNames,
         })
         const doc = await writer.generateApiDoc();
 
