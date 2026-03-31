@@ -16,7 +16,7 @@ on:
         required: true
 
 jobs:
-  update-schema:
+  update-rst-files:
     runs-on: ubuntu-latest
     env:
       BRANCH: ${{ inputs.release }}-mv${{ inputs.manifestVersion }}
@@ -32,10 +32,10 @@ jobs:
           exit 1
 
       - name: Checkout generator default branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Checkout schema repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: thunderbird/webext-annotated-schemas
           path: schemas
@@ -77,9 +77,9 @@ jobs:
           git clone --branch ${{ env.BRANCH }} git@github.com:thunderbird/webext-docs.git docs
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version: '24'
 
       - name: Install dependencies
         run: |
