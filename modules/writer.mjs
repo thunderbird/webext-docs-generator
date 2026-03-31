@@ -49,6 +49,12 @@ export class Writer {
     get ADDITIONAL_TYPE_PREFIXES() {
         return this.#options.ADDITIONAL_TYPE_PREFIXES;
     }
+    get SETTING_SUB_NAMESPACES() {
+        return this.#options.SETTING_SUB_NAMESPACES;
+    }
+    get IS_SETTING() {
+        return this.#options.IS_SETTING;
+    }
 
     reportFixMeIfTriggered(value, ...info) {
         if (value && this.config.report_errors) {
@@ -115,7 +121,7 @@ export class Writer {
         return lines;
     }
 
-    header_1(string) {
+    format_page_title(string) {
         return [
             "",
             "=".repeat(string.length),
@@ -125,7 +131,7 @@ export class Writer {
         ];
     }
 
-    header_2(title, classnames = "api-main-section") {
+    format_section_heading(title, classnames = "api-main-section") {
         return [
             "",
             `.. rst-class:: ${classnames}`,
@@ -136,7 +142,7 @@ export class Writer {
         ];
     }
 
-    header_3(text, { label = null, info = "" } = {}) {
+    format_entry_heading(text, { label = null, info = "" } = {}) {
         // The api-section-annotation-hack directive attaches the annotation
         // to the preceding section header, closes standard section div and opens api-section-body div
         return [
@@ -146,6 +152,41 @@ export class Writer {
             "",
             `.. api-section-annotation-hack:: ${info}`,
             ""
+        ];
+    }
+
+    format_setting_heading(name, { docRef, access = "write" } = {}) {
+        // Renders a self-contained property-style header bar that links to the
+        // setting's own page. Uses raw HTML to avoid creating RST sections
+        // (which would add toctree entries). Opens an api-section-body for the
+        // description; must be paired with format_setting_footer() to close it.
+        // Note: Uses <section> to mimic Sphinx's heading structure (see also
+        // apisectionannotationhack.py). If the theme changes its section
+        // elements, this must be updated to match (see also theme_overrides.css).
+        return [
+            "",
+            ".. raw:: html",
+            "",
+            `   <section class="setting-prop-header-section ${access}">`,
+            `   <div class="setting-prop-header">`,
+            `     <span class="setting-prop-label">${access}</span>`,
+            `     <a href="${docRef}.html">${name}</a>`,
+            `   </div>`,
+            `   </section><section class="api-section-body">`,
+            "",
+        ];
+    }
+
+    format_setting_footer() {
+        // Closes the <section class="api-section-body"> opened by
+        // format_setting_heading. See comment there about Sphinx theme
+        // dependency on <section> elements.
+        return [
+            "",
+            ".. raw:: html",
+            "",
+            "   </section>",
+            "",
         ];
     }
 
@@ -447,7 +488,7 @@ export class Writer {
 
     format_type(typeDef) {
         const section = new AdvancedArray();
-        section.append(this.header_3(
+        section.append(this.format_entry_heading(
             typeDef.id,
             {
                 label: `${this.namespaceName}.${typeDef.id}`,
@@ -813,7 +854,7 @@ export class Writer {
         }
 
         if (section.length > 0) {
-            section.prepend(this.header_2("Manifest file properties"));
+            section.prepend(this.format_section_heading("Manifest file properties"));
             this.sidebar.set("manifest", "  * `Manifest file properties`_");
         }
 
@@ -865,7 +906,7 @@ export class Writer {
 
         let section = new AdvancedArray();
         if (manifestPermissions.length > 0 || usedPermissions.length > 0) {
-            section.append(this.header_2("Permissions"));
+            section.append(this.format_section_heading("Permissions"));
             if (usedPermissions.length > 0) {
                 section.addParagraph(strings.permission_header)
                 section.append([
@@ -897,7 +938,7 @@ export class Writer {
                 continue;
             }
 
-            section.append(this.header_3(
+            section.append(this.format_entry_heading(
                 `${obj.name}(${this.format_params(obj, { callback: obj.async })})`,
                 {
                     label: `${this.namespaceName}.${obj.name}`,
@@ -953,7 +994,7 @@ export class Writer {
 
         this.sidebar.set("functions", "  * `Functions`_");
 
-        section.prepend(this.header_2("Functions"));
+        section.prepend(this.format_section_heading("Functions"));
         return section;
     }
 
@@ -969,7 +1010,7 @@ export class Writer {
                 continue;
             }
 
-            section.append(this.header_3(
+            section.append(this.format_entry_heading(
                 `${event.name}`, // could also add params later: `${event.name}(${format_params(event)})`
                 {
                     label: `${this.namespaceName}.${event.name}`,
@@ -1027,7 +1068,7 @@ export class Writer {
         }
         this.sidebar.set("events", "  * `Events`_");
 
-        section.prepend(this.header_2("Events"));
+        section.prepend(this.format_section_heading("Events"));
         return section;
     }
 
@@ -1105,49 +1146,101 @@ export class Writer {
         }
         this.sidebar.set("types", "  * `Types`_");
 
-        section.prepend(this.header_2("Types"));
+        section.prepend(this.format_section_heading("Types"));
         return section;
     }
 
     async generatePropertiesSection() {
-        if (!this.namespaceSchema.properties) {
-            return null;
-        }
+        // Collect constant properties and setting entries, sorted alphabetically.
+        const entries = [];
 
-        const section = new AdvancedArray();
-        for (let key of Object.keys(this.namespaceSchema.properties).sort((a, b) => a.localeCompare(b))) {
+        for (const key of Object.keys(this.namespaceSchema.properties || {}).sort((a, b) => a.localeCompare(b))) {
             const property = this.namespaceSchema.properties[key];
-
             const { version_added } = property?.annotations?.find(a => "version_added" in a) ?? {};
             if (version_added === false) {
                 continue;
             }
-
-            section.append(this.header_3(
-                key,
-                { label: `${this.namespaceName}.${key}` }
-            ));
-
-            if (property.description) {
-                section.append(this.format_description(property));
-            }
-
-            section.append("");
+            entries.push({ type: "constant", key, property });
         }
 
-        // Early exit if no properties have been found.
-        if (section.length == 0) {
+        for (const setting of this.SETTING_SUB_NAMESPACES) {
+            const shortName = setting.name.split(".").pop();
+            entries.push({ type: "setting", key: shortName, setting });
+        }
+
+        if (entries.length === 0) {
             return null;
         }
 
+        // Settings first, then constants — matching the sidebar toctree order.
+        // Alphabetical within each group.
+        entries.sort((a, b) => {
+            if (a.type !== b.type) {
+                return a.type === "setting" ? -1 : 1;
+            }
+            return a.key.localeCompare(b.key);
+        });
+
+        const section = new AdvancedArray();
         this.sidebar.set("properties", "  * `Properties`_");
 
-        section.prepend(this.header_2("Properties"));
+        section.append(this.format_section_heading("Properties"));
+
+        // Hidden toctree for setting sub-pages, placed right after the
+        // Properties heading before any entries. This position ensures
+        // Sphinx registers them under "Properties" in the sidebar and
+        // they are not swallowed by api-section-annotation-hack.
+        if (this.SETTING_SUB_NAMESPACES.length > 0) {
+            const sorted = [...this.SETTING_SUB_NAMESPACES]
+                .sort((a, b) => a.name.localeCompare(b.name));
+            section.append([
+                ".. toctree::",
+                "  :hidden:",
+                "",
+                ...sorted.map(s => {
+                    const shortName = s.name.split(".").pop();
+                    return `  ${shortName} <${s.name}>`;
+                }),
+                "",
+            ]);
+        }
+
+        // Render entries. Constants use format_entry_heading (RST section),
+        // settings use format_setting_heading/footer (self-contained raw HTML).
+        for (const entry of entries) {
+            if (entry.type === "constant") {
+                section.append(this.format_entry_heading(
+                    entry.key,
+                    { label: `${this.namespaceName}.${entry.key}` }
+                ));
+                if (entry.property.description) {
+                    section.append(this.format_description(entry.property));
+                }
+            } else {
+                section.append(this.format_setting_heading(
+                    entry.key,
+                    {
+                        docRef: entry.setting.name,
+                        access: entry.setting.readOnly ? "read" : "write"
+                    }
+                ));
+                section.append(this.format_description(entry.setting));
+                section.append(this.format_setting_footer());
+            }
+            section.append("");
+        }
+
         return section;
     }
 
     async generateApiDoc() {
-        const title = `${this.namespaceName} API`;
+        // For setting sub-namespaces, use the parent namespace name as the
+        // page title (e.g. "messengerSettings API" instead of
+        // "messengerSettings.readerDisplayAttachmentsInline API").
+        const parentNamespaceName = this.namespaceName.split(".").slice(0, -1).join(".");
+        const title = this.IS_SETTING
+            ? `${parentNamespaceName} API`
+            : `${this.namespaceName} API`;
         const doc = new AdvancedArray();
         const manifest = await this.generateManifestSection();
         const functions = await this.generateFunctionsSection();
@@ -1186,6 +1279,8 @@ export class Writer {
             "",
             ".. role:: code",
             "",
+            ".. role:: small",
+            "",
         ])
 
         let mdn_documentation_url = this.namespaceSchema?.annotations?.find(e => e.mdn_documentation_url)?.mdn_documentation_url;
@@ -1199,7 +1294,34 @@ export class Writer {
             ])
         }
 
-        doc.append(this.format_description(this.namespaceSchema));
+        if (this.IS_SETTING) {
+            // For setting sub-pages, show the parent namespace description
+            // first, then a "Property: ..." section header before the setting
+            // description. Uses raw HTML to avoid creating a toctree entry.
+            const parentSchema = this.parentNamespaceSchemas[this.parentNamespaceSchemas.length - 1];
+            if (parentSchema) {
+                doc.append(this.format_description(parentSchema));
+            }
+            const propertyName = this.namespaceName.split(".").pop();
+            doc.append([
+                "",
+                ".. raw:: html",
+                "",
+                `   <section class="api-main-section" id="setting-property">`,
+                `   <h2>Property: ${propertyName}</h2>`,
+                "",
+            ]);
+            doc.append(this.format_description(this.namespaceSchema));
+            doc.append([
+                "",
+                ".. raw:: html",
+                "",
+                "   </section>",
+                "",
+            ]);
+        } else {
+            doc.append(this.format_description(this.namespaceSchema));
+        }
 
         doc.addSection(manifest);
         doc.addSection(permissions);

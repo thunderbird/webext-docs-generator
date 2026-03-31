@@ -116,7 +116,73 @@ if (!config.schemas || !config.output || !config.manifest_version) {
         relatedNamespaceNames.set(schema.file, names);
     }
 
-    const apiNames = [...namespaces.keys()]
+    // Expand properties with "$ref": "types.Setting" into synthetic sub-namespaces.
+    // The Setting type has functions (get, set, clear) and events (onChange), which
+    // map naturally to the existing sub-namespace documentation model.
+    const settingType = globalTypes.get("types.Setting");
+    const settingSubNamespaces = new Map();
+    if (settingType) {
+        for (const [namespaceName, schema] of [...namespaces]) {
+            const namespaceSchema = schema.find(e => e.namespace === namespaceName);
+            if (!namespaceSchema?.properties) continue;
+
+            const manifestSchema = schema.find(e => e.namespace === "manifest");
+            const settingPropertyNames = [];
+
+            for (const [propName, propDef] of Object.entries(namespaceSchema.properties)) {
+                if (propDef["$ref"] !== "types.Setting") continue;
+                settingPropertyNames.push(propName);
+
+                const subNamespaceName = `${namespaceName}.${propName}`;
+                const syntheticSchema = {
+                    namespace: subNamespaceName,
+                    functions: structuredClone(settingType.functions || []),
+                    events: structuredClone(settingType.events || []),
+                    description: propDef.description,
+                    annotations: propDef.annotations,
+                };
+
+                const annotationProps = propDef.annotations
+                    ?.find(a => a.additional_properties)?.additional_properties;
+                if (annotationProps?.readOnly) {
+                    syntheticSchema.functions = syntheticSchema.functions
+                        .filter(f => f.name === "get");
+                }
+
+                const entry = [syntheticSchema];
+                entry.push(manifestSchema || { namespace: "manifest" });
+                namespaces.set(subNamespaceName, entry);
+
+                for (const [file, names] of relatedNamespaceNames) {
+                    if (names.includes(namespaceName)) {
+                        names.push(subNamespaceName);
+                        break;
+                    }
+                }
+
+                if (!settingSubNamespaces.has(namespaceName)) {
+                    settingSubNamespaces.set(namespaceName, []);
+                }
+                settingSubNamespaces.get(namespaceName).push({
+                    name: subNamespaceName,
+                    description: propDef.description,
+                    readOnly: !!annotationProps?.readOnly,
+                });
+            }
+
+            for (const propName of settingPropertyNames) {
+                delete namespaceSchema.properties[propName];
+            }
+            if (Object.keys(namespaceSchema.properties).length === 0) {
+                delete namespaceSchema.properties;
+            }
+        }
+    }
+
+    // Setting sub-namespaces are listed via toctree in their parent page,
+    // not in the top-level API list.
+    const settingNames = new Set([...settingSubNamespaces.values()].flat().map(s => s.name));
+    const apiNames = [...namespaces.keys()].filter(n => !settingNames.has(n))
 
     await tools.copyFolder(TEMPLATE_PATH, config.output);
     await tools.processFiles(config.output, /\.rst$/i, true, content => {
@@ -181,6 +247,8 @@ if (!config.schemas || !config.output || !config.manifest_version) {
             PERMISSION_LOCALES,
             ADDITIONAL_TYPE_PREFIXES,
             RELATED_NAMESPACE_NAMES: [...relatedNamespaceNames.values()].find(e => e.includes(namespaceName)),
+            SETTING_SUB_NAMESPACES: settingSubNamespaces.get(namespaceName) || [],
+            IS_SETTING: settingNames.has(namespaceName),
         })
         const doc = await writer.generateApiDoc();
 
