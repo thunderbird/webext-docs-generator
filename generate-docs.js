@@ -344,6 +344,9 @@ if (!config.schemas || !config.output || !config.manifest_version) {
             }
             scanEnums(prop, getVersion(prop) || parentVersion, propPath, results);
         }
+        for (const choice of node.choices || []) {
+            scanProperties(choice, parentVersion, parentPath, paramName, results);
+        }
     }
 
     function scanEnums(node, parentVersion, parentPath, results) {
@@ -362,8 +365,6 @@ if (!config.schemas || !config.output || !config.manifest_version) {
     }
 
     for (const [namespaceName, schema] of namespaces) {
-        if (settingNames.has(namespaceName)) continue;
-
         const ns = schema.find(e => e.namespace === namespaceName);
         if (!ns) continue;
 
