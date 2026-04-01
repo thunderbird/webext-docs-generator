@@ -263,10 +263,7 @@ if (!config.schemas || !config.output || !config.manifest_version) {
     // Collect changelog data from version_added annotations.
     const changelog = new Map();
     const changelogResolveRef = (ref) => {
-        const parts = ref.split(".");
-        const namespace = parts.slice(0, -1).join(".");
-        const anchor = tools.guessRefId(tools.escapeUppercase(ref));
-        return `\`${ref} <../${namespace}.html#${anchor}>\`__`;
+        return `:ref:\`${ref} <${tools.escapeUppercase(ref)}>\``;
     };
     const formatChangelogDescription = str =>
         Writer.convertMarkupToRst(str, { resolveRef: changelogResolveRef })
@@ -365,6 +362,25 @@ if (!config.schemas || !config.output || !config.manifest_version) {
         }
     }
 
+    function addChangelogResults(namespaceName, results) {
+        for (const result of results) {
+            if (!changelog.has(result.version)) changelog.set(result.version, []);
+            let group = changelog.get(result.version).find(g => g.namespace === namespaceName && !g.isNew);
+            if (!group) {
+                group = { namespace: namespaceName, isNew: false, newItems: [], seen: new Set() };
+                changelog.get(result.version).push(group);
+            }
+            const name = result.path.map(p => p.name).join(".");
+            if (group.seen.has(name)) continue;
+            group.seen.add(name);
+            group.newItems.push({
+                section: result.path[0].type,
+                name,
+                description: result.description,
+            });
+        }
+    }
+
     for (const [namespaceName, schema] of namespaces) {
         const ns = schema.find(e => e.namespace === namespaceName);
         if (!ns) continue;
@@ -389,66 +405,18 @@ if (!config.schemas || !config.output || !config.manifest_version) {
         scanNode(nsWithManifestTypes, nsVersion, [], results);
 
         // Group results by version and namespace, deduplicating by name.
-        for (const result of results) {
-            if (!changelog.has(result.version)) changelog.set(result.version, []);
-            let group = changelog.get(result.version).find(g => g.namespace === namespaceName && !g.isNew);
-            if (!group) {
-                group = { namespace: namespaceName, isNew: false, newItems: [], seen: new Set() };
-                changelog.get(result.version).push(group);
-            }
-            const topEntry = result.path[0];
-            const name = result.path.map(p => p.name).join(".");
-            if (group.seen.has(name)) continue;
-            group.seen.add(name);
-            group.newItems.push({
-                section: topEntry.type,
-                name,
-                description: result.description,
-            });
-        }
-    }
+        addChangelogResults(namespaceName, results);
 
-    // Scan manifest $extend types for changelog entries.
-    // These are handled independently from API entries, using a "manifest" label.
-    // NOTE: The doc page name is derived from the manifest property name via
-    // toCamelCase (e.g. "oauth_provider" -> "oauthProvider"). This works because
-    // manifest-only schema files create synthetic namespaces the same way
-    // (see lines 101-105). For files with a co-located API namespace, the
-    // camelCase of the manifest key matches the API namespace name by convention.
-    for (const [namespaceName, schema] of namespaces) {
-        const manifestSchema = schema.find(e => e.namespace === "manifest");
-        if (!manifestSchema?.types) continue;
-
-        const results = [];
-        for (const type of manifestSchema.types.filter(t => t.$extend)) {
+        // Scan manifest $extend types for changelog entries. The doc page
+        // name matches the camelCase namespace name by convention (e.g.
+        // "oauth_provider" -> "oauthProvider", see lines 101-105).
+        const manifestExtendResults = [];
+        for (const type of (manifestSchema?.types || []).filter(t => t.$extend)) {
             // Use null as parent version — the manifest namespace version is
             // just a file-level container, not a meaningful parent.
-            scanProperties(type, null, [], null, results);
+            scanProperties(type, null, [], null, manifestExtendResults);
         }
-
-        for (const result of results) {
-            if (!changelog.has(result.version)) changelog.set(result.version, []);
-            let group = changelog.get(result.version).find(
-                g => g.namespace === namespaceName && !g.isNew
-            );
-            if (!group) {
-                group = {
-                    namespace: namespaceName,
-                    isNew: false,
-                    newItems: [],
-                    seen: new Set(),
-                };
-                changelog.get(result.version).push(group);
-            }
-            const name = result.path.map(p => p.name).join(".");
-            if (group.seen.has(name)) continue;
-            group.seen.add(name);
-            group.newItems.push({
-                section: result.path[0].type,
-                name,
-                description: result.description,
-            });
-        }
+        addChangelogResults(namespaceName, manifestExtendResults);
     }
 
     // Determine minimum changelog version from the template placeholder.
@@ -477,6 +445,12 @@ if (!config.schemas || !config.output || !config.manifest_version) {
         const entries = changelog.get(version);
         const title = `Changelog for Thunderbird ${version}`;
         const lines = [
+            ".. role:: permission",
+            "",
+            ".. role:: value",
+            "",
+            ".. role:: code",
+            "",
             ".. role:: small",
             "",
             "=".repeat(title.length),
@@ -524,11 +498,11 @@ if (!config.schemas || !config.output || !config.manifest_version) {
                 });
                 for (const item of sortedItems) {
                     const label = sectionLabels[item.section] || item.section;
-                    const link = `../${api.namespace}.html#${tools.guessRefId(tools.escapeUppercase(`${api.namespace}.${item.name}`))}`;
+                    const ref = `:ref:\`${item.name} <${tools.escapeUppercase(`${api.namespace}.${item.name}`)}>\``;
                     if (item.description) {
-                        lines.push(`- :small:\`${label}\` \`${item.name} <${link}>\`__ — ${item.description}`);
+                        lines.push(`- :small:\`${label}\` ${ref} — ${item.description}`);
                     } else {
-                        lines.push(`- :small:\`${label}\` \`${item.name} <${link}>\`__`);
+                        lines.push(`- :small:\`${label}\` ${ref}`);
                     }
                 }
                 lines.push("");
