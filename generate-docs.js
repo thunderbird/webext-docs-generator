@@ -408,6 +408,49 @@ if (!config.schemas || !config.output || !config.manifest_version) {
         }
     }
 
+    // Scan manifest $extend types for changelog entries.
+    // These are handled independently from API entries, using a "manifest" label.
+    // NOTE: The doc page name is derived from the manifest property name via
+    // toCamelCase (e.g. "oauth_provider" -> "oauthProvider"). This works because
+    // manifest-only schema files create synthetic namespaces the same way
+    // (see lines 101-105). For files with a co-located API namespace, the
+    // camelCase of the manifest key matches the API namespace name by convention.
+    for (const [namespaceName, schema] of namespaces) {
+        const manifestSchema = schema.find(e => e.namespace === "manifest");
+        if (!manifestSchema?.types) continue;
+
+        const results = [];
+        for (const type of manifestSchema.types.filter(t => t.$extend)) {
+            // Use null as parent version — the manifest namespace version is
+            // just a file-level container, not a meaningful parent.
+            scanProperties(type, null, [], null, results);
+        }
+
+        for (const result of results) {
+            if (!changelog.has(result.version)) changelog.set(result.version, []);
+            let group = changelog.get(result.version).find(
+                g => g.namespace === namespaceName && !g.isNew
+            );
+            if (!group) {
+                group = {
+                    namespace: namespaceName,
+                    isNew: false,
+                    newItems: [],
+                    seen: new Set(),
+                };
+                changelog.get(result.version).push(group);
+            }
+            const name = result.path.map(p => p.name).join(".");
+            if (group.seen.has(name)) continue;
+            group.seen.add(name);
+            group.newItems.push({
+                section: result.path[0].type,
+                name,
+                description: result.description,
+            });
+        }
+    }
+
     // Determine minimum changelog version from the template placeholder.
     const indexContent = await fs.readFile(path.join(config.output, "index.rst"), "utf8");
     const minVersionMatch = indexContent.match(/\{\{CHANGELOG_LIST(?::(\d+))?\}\}/);
