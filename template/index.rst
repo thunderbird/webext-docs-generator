@@ -31,4 +31,4 @@
   :maxdepth: 1
   :caption: Changelog
 
-  {{CHANGELOG_LIST:115}}
+  {{CHANGELOG_LIST:78}}
