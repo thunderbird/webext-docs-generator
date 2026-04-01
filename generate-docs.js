@@ -166,6 +166,7 @@ if (!config.schemas || !config.output || !config.manifest_version) {
                 settingSubNamespaces.get(namespaceName).push({
                     name: subNamespaceName,
                     description: propDef.description,
+                    annotations: propDef.annotations,
                     readOnly: !!annotationProps?.readOnly,
                 });
             }

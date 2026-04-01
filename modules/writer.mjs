@@ -158,7 +158,7 @@ export class Writer {
         ];
     }
 
-    format_setting_heading(name, { docRef, access = "write" } = {}) {
+    format_setting_heading(name, { docRef, access = "write", addition = "" } = {}) {
         // Renders a self-contained property-style header bar that links to the
         // setting's own page. Uses raw HTML to avoid creating RST sections
         // (which would add toctree entries). Opens an api-section-body for the
@@ -175,7 +175,8 @@ export class Writer {
             `     <span class="setting-prop-label">${access}</span>`,
             `     <a href="${docRef}.html">${name}</a>`,
             `   </div>`,
-            `   </section><section class="api-section-body">`,
+            "",
+            `.. api-section-annotation-hack:: ${addition}`,
             "",
         ];
     }
@@ -1248,7 +1249,8 @@ export class Writer {
                     entry.key,
                     {
                         docRef: entry.setting.name,
-                        access: entry.setting.readOnly ? "read" : "write"
+                        access: entry.setting.readOnly ? "read" : "write",
+                        addition: this.format_addition(entry.setting, 1)
                     }
                 ));
                 section.append(this.format_description(entry.setting));
