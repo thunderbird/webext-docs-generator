@@ -1235,7 +1235,10 @@ export class Writer {
             if (entry.type === "constant") {
                 section.append(this.format_entry_heading(
                     entry.key,
-                    { label: `${this.namespaceName}.${entry.key}` }
+                    {
+                        label: `${this.namespaceName}.${entry.key}`,
+                        info: this.format_addition(entry.property, 1)
+                    }
                 ));
                 if (entry.property.description) {
                     section.append(this.format_description(entry.property));
