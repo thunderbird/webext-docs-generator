@@ -270,7 +270,8 @@ if (!config.schemas || !config.output || !config.manifest_version) {
     };
     const formatChangelogDescription = str =>
         Writer.convertMarkupToRst(str, { resolveRef: changelogResolveRef })
-            ?.replace(/\s+/g, " ")
+            ?.replace(/:doc:`/g, ":doc:`../")
+            .replace(/\s+/g, " ")
             .trim()
         || "";
 
