@@ -471,6 +471,9 @@ if (!config.schemas || !config.output || !config.manifest_version) {
 
         const formatApiHeader = (namespaceName) => [
             "",
+            namespaceName,
+            "-".repeat(namespaceName.length),
+            "",
             ".. raw:: html",
             "",
             `   <div class="changelog-api-header">`,
