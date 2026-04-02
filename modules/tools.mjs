@@ -413,19 +413,3 @@ export function guessRefId(label) {
 }
 
 
-/**
- * Converts a snake_case (underscore-separated) string to camelCase.
- *
- * Example:
- *   "message_display_scripts" → "messageDisplayScripts"
- *   "oauth_providers" → "oauthProviders"
- *
- * Underscores are removed and the following character is upper-cased.
- * Characters outside of underscores remain unchanged.
- *
- * @param {string} str - The snake_case string to convert.
- * @returns {string} The converted camelCase string.
- */
-export function toCamelCase(str) {
-    return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
-}

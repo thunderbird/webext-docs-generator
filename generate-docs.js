@@ -95,16 +95,6 @@ if (!config.schemas || !config.output || !config.manifest_version) {
         let manifestNamespace = schema.data.find(e => e.namespace === "manifest");
         let otherNamespaces = schema.data.filter(e => e.namespace !== "manifest");
 
-        // Find APIs which do not have a path and therefore no API namespace. In
-        // order to document those, we create a fake API namespace, following the
-        // same camel case notation.
-        if (!otherNamespaces.length && manifestNamespace?.types?.length) {
-            otherNamespaces = manifestNamespace.types
-                .filter(t => t.$extend === "WebExtensionManifest")
-                .flatMap(t => Object.keys(t.properties))
-                .map(snake => ({ namespace: tools.toCamelCase(snake) }));
-        }
-
         for (let entry of otherNamespaces) {
             const name = entry.namespace;
             const namespace = tools.mergeSchema(namespaces.get(name) ?? [], entry, manifestNamespace);
