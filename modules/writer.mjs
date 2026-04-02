@@ -1177,87 +1177,76 @@ export class Writer {
     }
 
     async generatePropertiesSection() {
-        // Collect constant properties and setting entries, sorted alphabetically.
-        const entries = [];
-
+        const constants = [];
         for (const key of Object.keys(this.namespaceSchema.properties || {}).sort((a, b) => a.localeCompare(b))) {
             const property = this.namespaceSchema.properties[key];
             const { version_added } = property?.annotations?.find(a => "version_added" in a) ?? {};
             if (version_added === false) {
                 continue;
             }
-            entries.push({ type: "constant", key, property });
+            constants.push({ key, property });
         }
 
-        for (const setting of this.SETTING_SUB_NAMESPACES) {
-            const shortName = setting.name.split(".").pop();
-            entries.push({ type: "setting", key: shortName, setting });
-        }
+        const settings = [...this.SETTING_SUB_NAMESPACES]
+            .sort((a, b) => a.name.localeCompare(b.name));
 
-        if (entries.length === 0) {
+        if (constants.length === 0 && settings.length === 0) {
             return null;
         }
 
-        // Settings first, then constants — matching the sidebar toctree order.
-        // Alphabetical within each group.
-        entries.sort((a, b) => {
-            if (a.type !== b.type) {
-                return a.type === "setting" ? -1 : 1;
-            }
-            return a.key.localeCompare(b.key);
-        });
-
         const section = new AdvancedArray();
-        this.sidebar.set("properties", "  * `Properties`_");
 
-        section.append(this.format_section_heading("Properties"));
+        // Settings section.
+        if (settings.length > 0) {
+            this.sidebar.set("settings", "  * `Settings`_");
+            section.append(this.format_section_heading("Settings"));
 
-        // Hidden toctree for setting sub-pages, placed right after the
-        // Properties heading before any entries. This position ensures
-        // Sphinx registers them under "Properties" in the sidebar and
-        // they are not swallowed by api-section-annotation-hack.
-        if (this.SETTING_SUB_NAMESPACES.length > 0) {
-            const sorted = [...this.SETTING_SUB_NAMESPACES]
-                .sort((a, b) => a.name.localeCompare(b.name));
+            // Hidden toctree for setting sub-pages.
             section.append([
                 ".. toctree::",
                 "  :hidden:",
                 "",
-                ...sorted.map(s => {
+                ...settings.map(s => {
                     const shortName = s.name.split(".").pop();
                     return `  ${shortName} <${s.name}>`;
                 }),
                 "",
             ]);
+
+            for (const setting of settings) {
+                const shortName = setting.name.split(".").pop();
+                section.append(this.format_setting_heading(
+                    shortName,
+                    {
+                        docRef: setting.name,
+                        access: setting.readOnly ? "read" : "write",
+                        addition: this.format_addition(setting, 1)
+                    }
+                ));
+                section.append(this.format_description(setting));
+                section.append(this.format_setting_footer());
+                section.append("");
+            }
         }
 
-        // Render entries. Constants use format_entry_heading (RST section),
-        // settings use format_setting_heading/footer (self-contained raw HTML).
-        for (const entry of entries) {
-            if (entry.type === "constant") {
+        // Properties section (constants).
+        if (constants.length > 0) {
+            this.sidebar.set("properties", "  * `Properties`_");
+            section.append(this.format_section_heading("Properties"));
+
+            for (const { key, property } of constants) {
                 section.append(this.format_entry_heading(
-                    entry.key,
+                    key,
                     {
-                        label: `${this.namespaceName}.${entry.key}`,
-                        info: this.format_addition(entry.property, 1)
+                        label: `${this.namespaceName}.${key}`,
+                        info: this.format_addition(property, 1)
                     }
                 ));
-                if (entry.property.description) {
-                    section.append(this.format_description(entry.property));
+                if (property.description) {
+                    section.append(this.format_description(property));
                 }
-            } else {
-                section.append(this.format_setting_heading(
-                    entry.key,
-                    {
-                        docRef: entry.setting.name,
-                        access: entry.setting.readOnly ? "read" : "write",
-                        addition: this.format_addition(entry.setting, 1)
-                    }
-                ));
-                section.append(this.format_description(entry.setting));
-                section.append(this.format_setting_footer());
+                section.append("");
             }
-            section.append("");
         }
 
         return section;
@@ -1296,6 +1285,7 @@ export class Writer {
             this.sidebar.get("functions"),
             this.sidebar.get("events"),
             this.sidebar.get("types"),
+            this.sidebar.get("settings"),
             this.sidebar.get("properties"),
             "",
             "  .. include:: /_includes/developer-resources.rst",
