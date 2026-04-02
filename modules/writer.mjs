@@ -1266,9 +1266,9 @@ export class Writer {
         // For setting sub-namespaces, use the parent namespace name as the
         // page title (e.g. "messengerSettings API" instead of
         // "messengerSettings.readerDisplayAttachmentsInline API").
-        const parentNamespaceName = this.namespaceName.split(".").slice(0, -1).join(".");
+        const propertyName = this.namespaceName.split(".").pop();
         const title = this.IS_SETTING
-            ? `${parentNamespaceName} API`
+            ? `${propertyName} Setting`
             : `${this.namespaceName} API`;
         const doc = new AdvancedArray();
         const manifest = await this.generateManifestSection();
@@ -1280,6 +1280,10 @@ export class Writer {
         // Last, because it needs api.foundPermissions to be populated.
         const permissions = await this.generatePermissionsSection();
 
+        if (this.IS_SETTING) {
+            this.sidebar.set("examples", "  * `Examples`_");
+        }
+
         doc.append([
             ".. container:: sticky-sidebar",
             "",
@@ -1287,6 +1291,7 @@ export class Writer {
             "",
             this.sidebar.get("manifest"),
             this.sidebar.get("permissions"),
+            this.sidebar.get("examples"),
             this.sidebar.get("functions"),
             this.sidebar.get("events"),
             this.sidebar.get("types"),
@@ -1320,39 +1325,51 @@ export class Writer {
         }
 
         if (this.IS_SETTING) {
-            // For setting sub-pages, show the parent namespace description
-            // first, then a "Property: ..." section header before the setting
-            // description. Uses raw HTML to avoid creating a toctree entry.
-            const parentSchema = this.parentNamespaceSchemas[this.parentNamespaceSchemas.length - 1];
-            if (parentSchema) {
-                doc.append(this.format_description(parentSchema));
-            }
-            const propertyName = this.namespaceName.split(".").pop();
-            doc.append([
-                "",
-                ".. raw:: html",
-                "",
-                `   <section class="api-main-section" id="setting-property">`,
-                `   <h2>Property: ${propertyName}</h2>`,
-                "",
-            ]);
-            // Add a :ref: label right before the description so
-            // cross-references resolve with the description as display text.
             doc.append(this.reference(`${this.namespaceName}`));
             doc.append(this.format_description(this.namespaceSchema));
-            doc.append([
-                "",
-                ".. raw:: html",
-                "",
-                "   </section>",
-                "",
-            ]);
         } else {
             doc.append(this.format_description(this.namespaceSchema));
         }
 
         doc.addSection(manifest);
         doc.addSection(permissions);
+
+        if (this.IS_SETTING) {
+            // Examples section for setting sub-pages.
+            const hasSet = this.namespaceSchema.functions?.some(f => f.name === "set");
+            const apiPath = `messenger.${this.namespaceName}`;
+            const examples = [
+                "",
+                ".. rst-class:: api-main-section",
+                "",
+                "Examples",
+                "========",
+                "",
+                `To read the :value:\`${propertyName}\` setting:`,
+                "",
+                ".. code-block:: javascript",
+                "",
+                `   let { value } = await ${apiPath}.get({});`,
+                "",
+            ];
+            if (hasSet) {
+                examples.push(
+                    `To update the :value:\`${propertyName}\` setting:`,
+                    "",
+                    ".. code-block:: javascript",
+                    "",
+                    `   await ${apiPath}.set({ value: <newValue> });`,
+                    "",
+                    `To clear the :value:\`${propertyName}\` setting and restore the default value:`,
+                    "",
+                    ".. code-block:: javascript",
+                    "",
+                    `   await ${apiPath}.clear({});`,
+                    "",
+                );
+            }
+            doc.append(examples);
+        }
         doc.addSection(functions);
         doc.addSection(events);
         doc.addSection(types);
