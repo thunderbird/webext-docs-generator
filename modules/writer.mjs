@@ -670,6 +670,7 @@ export class Writer {
             // actual line breaks.
             "<li>": "\n\n * ",
             "<br>": " ",
+            "<br/>": " ",
         };
 
         for (const [s, r] of Object.entries(replacements)) {
