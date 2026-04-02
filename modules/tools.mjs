@@ -182,45 +182,6 @@ export async function copyFolder(source, destination) {
 }
 
 /**
- * Fix malformed <val> or <var> tags written as double opening tags:
- * e.g., <val>something<val>  -> <val>something</val>
- *
- * @param {string} str
- * @param {string[]} tags  list of tag names to repair
- * @returns {string}
- */
-export function fixMalformedClosingTags(str, tags = []) {
-  for (const tag of tags) {
-    const openTag = `<${tag}>`;
-    let start = 0;
-
-    while (true) {
-      // find the first opening tag
-      const first = str.indexOf(openTag, start);
-      if (first === -1) break;
-
-      // find the next opening tag after the first
-      const second = str.indexOf(openTag, first + openTag.length);
-      if (second === -1) break;
-
-      // check if there is a proper closing tag in between
-      const content = str.slice(first + openTag.length, second);
-      if (!content.includes(`</${tag}>`)) {
-        // fix: replace the second opening with a closing tag
-        str =
-          str.slice(0, second) +
-          `</${tag}>` +
-          str.slice(second + openTag.length);
-      }
-
-      // continue search after the first tag (or second if fixed)
-      start = second + 1;
-    }
-  }
-  return str;
-}
-
-/**
  * Indents each line of an array of strings by a given number of spaces.
  *
  * @param {string[]} lines - Lines to indent

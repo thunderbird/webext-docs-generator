@@ -425,40 +425,7 @@ export class Writer {
             return [];
         }
 
-        const parseDLDescriptions = (str) => {
-            const result = new Map();
-            if (!str) {
-                return result;
-            };
-
-            // Match the first <dl>...</dl> block
-            const dlMatch = str.match(/<dl>([\s\S]*?)<\/dl>/i);
-            if (!dlMatch) return result;
-            const dlContent = dlMatch[1];
-
-            // Match all <dt>...</dt><dd>...</dd> pairs
-            const pairRegex = /<dt>(.*?)<\/dt>\s*<dd>(.*?)<\/dd>/gi;
-            let match;
-            while ((match = pairRegex.exec(dlContent)) !== null) {
-                const key = match[1].trim();
-                const value = match[2].trim();
-                result.set(key, value);
-            }
-            return result;
-        }
-
-        // Some descriptions includes <dl> <dt></dt><dd></dd> </dl> tags with
-        // enum descriptions.
         let schema_annotations = value.enums ?? {};
-        const dlEnumDescriptions = parseDLDescriptions(value.description);
-        dlEnumDescriptions.forEach((enumDescription, enumName) => {
-            if (!schema_annotations[enumName]) {
-                schema_annotations[enumName] = { "annotations": [] }
-            }
-            schema_annotations[enumName].annotations.push({
-                "text": enumDescription
-            })
-        })
 
         const enum_lines = [""];
         if (value.enum.length === 0) {
@@ -617,19 +584,11 @@ export class Writer {
             return str;
         }
 
-        // Fix malformed <val> and <var> tags where closing tag is missing
-        str = tools.fixMalformedClosingTags(str, ["val", "var", "code", "permission"]);
-
         // Remove <code> inside <a>, as it is not render-able.
         str = str.replace(
             /(<a .*?>)<code>(.*?)<\/code>(.*?<\/a>)/g,
             '$1$2$3'
         );
-
-        // Some descriptions include <dl>...</dl> tags with enum descriptions, which
-        // get extracted and used elsewhere, so we do not need to include them here
-        // again.
-        str = str.replace(/<dl>[\s\S]*?<\/dl>/i, "");
 
         const replacements = {
             "<strong>": "**",
