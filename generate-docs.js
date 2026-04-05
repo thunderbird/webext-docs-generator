@@ -356,7 +356,7 @@ if (!config.schemas || !config.output || !config.manifest_version) {
     function addChangelogResults(namespaceName, results) {
         for (const result of results) {
             if (!changelog.has(result.version)) changelog.set(result.version, []);
-            let group = changelog.get(result.version).find(g => g.namespace === namespaceName && !g.isNew);
+            let group = changelog.get(result.version).find(g => g.namespace === namespaceName);
             if (!group) {
                 group = { namespace: namespaceName, isNew: false, newItems: [], seen: new Set() };
                 changelog.get(result.version).push(group);
@@ -373,6 +373,8 @@ if (!config.schemas || !config.output || !config.manifest_version) {
     }
 
     for (const [namespaceName, schema] of namespaces) {
+        if (settingNames.has(namespaceName)) continue;
+
         const ns = schema.find(e => e.namespace === namespaceName);
         if (!ns) continue;
 
@@ -385,6 +387,8 @@ if (!config.schemas || !config.output || !config.manifest_version) {
                 namespace: namespaceName,
                 description: formatChangelogDescription(ns.description || ""),
                 isNew: true,
+                newItems: [],
+                seen: new Set(),
             });
         }
 
@@ -408,6 +412,19 @@ if (!config.schemas || !config.output || !config.manifest_version) {
             scanProperties(type, null, [], null, manifestExtendResults);
         }
         addChangelogResults(namespaceName, manifestExtendResults);
+
+        // Add setting sub-namespaces as changelog items under the parent.
+        for (const setting of (settingSubNamespaces.get(namespaceName) || [])) {
+            const settingVersion = getVersion(setting);
+            if (settingVersion) {
+                const shortName = setting.name.split(".").pop();
+                addChangelogResults(namespaceName, [{
+                    version: settingVersion,
+                    path: [{ type: "settings", name: shortName }],
+                    description: formatChangelogDescription(setting.description || ""),
+                }]);
+            }
+        }
     }
 
     // Determine minimum changelog version from the template placeholder.
@@ -457,8 +474,9 @@ if (!config.schemas || !config.output || !config.manifest_version) {
             events: "event",
             types: "type",
             properties: "property",
+            settings: "setting",
         };
-        const sectionOrder = ["functions", "events", "types", "properties"];
+        const sectionOrder = ["functions", "events", "types", "properties", "settings"];
 
         const formatApiHeader = (namespaceName) => [
             "",
@@ -479,11 +497,10 @@ if (!config.schemas || !config.output || !config.manifest_version) {
             .sort((a, b) => a.namespace.localeCompare(b.namespace));
         for (const api of sortedEntries) {
             lines.push(...formatApiHeader(api.namespace));
-            if (api.isNew) {
-                if (api.description) {
-                    lines.push(api.description, "");
-                }
-            } else {
+            if (api.isNew && api.description) {
+                lines.push(api.description, "");
+            }
+            if (api.newItems.length > 0) {
                 const sortedItems = api.newItems.sort((a, b) => {
                     const orderA = sectionOrder.indexOf(a.section);
                     const orderB = sectionOrder.indexOf(b.section);
