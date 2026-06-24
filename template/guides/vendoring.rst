@@ -58,7 +58,7 @@ URL** it was downloaded from:
 
    vendor/lighterhtml.min.js:
     - Version: 4.2.0
-    - URL: https://cdn.jsdelivr.net/npm/lighterhtml@4.2.0/min.min.js
+    - URL: https://cdn.jsdelivr.net/npm/lighterhtml@4.2.0/min.js
 
 The format is intentionally lenient. What matters is that each bundled file is
 paired with a source URL that points to the exact released file on a trusted host.

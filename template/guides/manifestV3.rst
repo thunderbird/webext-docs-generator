@@ -17,7 +17,7 @@ accounts API
 * Default value for the ``includeSubFolders`` parameter of $(ref:accounts.list) has been changed from ``true`` to ``false``.
 * Default value for the ``includeSubFolders`` parameter of $(ref:accounts.get) has been changed from ``true`` to ``false``.
 * Default value for the ``includeSubFolders`` parameter of $(ref:accounts.getDefault) has been changed from ``true`` to ``false``.
-* The function ``accounts.setDefaultIdentity`` has been removed, use $(ref:identities.getDefault) instead.
+* The function ``accounts.setDefaultIdentity`` has been removed, use $(ref:identities.setDefault) instead.
 * The ``folders`` property of the $(ref:accounts.MailAccount) type has been replaced by the ``rootFolder`` property.
 * The ``type`` property of the $(ref:accounts.MailAccount) type uses ``local`` instead of ``none`` for local accounts.
 
@@ -37,7 +37,7 @@ mailingLists API
 
 browserAction API
 =================
-* Replaced by :doc:`/action`
+* Replaced by :doc:`/action`.
 
 commands API
 ============
@@ -118,6 +118,6 @@ spacesToolbar API
 
 tabs API
 ========
-* The ``mailTab`` property of the ``queryInfo`` parameter of $(ref:mailTabs.query) has been removed. Use the ``type`` property instead.
-* The ``mailTab`` property of $(ref:mailTabs.MailTab) has been removed. Use the ``type`` property instead.
+* The ``mailTab`` property of the ``queryInfo`` parameter of $(ref:Tab.query) has been removed. Use the ``type`` property instead.
+* The ``mailTab`` property of $(ref:Tab.Tab) has been removed. Use the ``type`` property instead.
 * The ``tabs.executeScript`` and ``tabs.insertCSS`` functions have been removed. Use :doc:`/scripting`, :doc:`/scripting.compose` or :doc:`/scripting.messageDisplay` instead. **Note**: It is no longer possible to execute a JavaScript string in Manifest V3.

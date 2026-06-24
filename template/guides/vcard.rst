@@ -42,9 +42,9 @@ In the ``background.js`` script one can then import the library and parse vCard 
    *  
    * Array(3)
    *  0: "vcard"     // Name of the component.
-   *  1: Array(4)    // Array of entries.
+   *  1: Array(3)    // Array of entries.
    *     0: Array(4) ["version", {}, "text", "4.0" ]
-   *     1: Array(4) [ "n", {}, "text", [ "", "first", "", "", "" ] ]
+   *     1: Array(4) [ "n", {}, "text", [ "LastName", "FirstName", "", "", "" ] ]
    *     2: Array(4) [ "email", { pref: "1" }, "text", "user@inter.net"]
    *  2: Array []    // Array of subcomponents, should be empty for vCard, used
    *                 // by vCalendar, which has vEvent subcomponents.
@@ -93,7 +93,7 @@ The ical library also supports manipulating the data on a higher level, using th
     email.jCal[3] = "other@inter.net";
     // Option 2: Remove the existing entry and add a new one (changes order of entries)
     vCard.removeProperty(email);
-    vCard.addProperty(new ICAL.Property(["email", {}, "text", "other@inter.net"]);
+    vCard.addProperty(new ICAL.Property(["email", {}, "text", "other@inter.net"]));
   }
 
   // Update the contact.
